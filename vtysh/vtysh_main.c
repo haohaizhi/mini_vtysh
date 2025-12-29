@@ -60,6 +60,14 @@ static char *line_read;
 /* Master of threads. */
 struct thread_master *master;
 
+char *vty_addr = DEFAULT_VTY_ADDR;
+
+
+int vty_port = VTYSH_VTY_PORT;
+
+/* Process ID saved for use by init system */
+const char *pid_file = PATH_RIPD_PID;
+
 /* Command logging */
 // FILE *logfile;
 
@@ -126,32 +134,42 @@ vtysh_signal_init ()
 
 /* Help information display. */
 static void
-usage (int status)
+usage (char *progname, int status)
 {
   if (status != 0)
     fprintf (stderr, "Try `%s --help' for more information.\n", progname);
   else
-    printf ("Usage : %s [OPTION...]\n\n" \
-	    "Integrated shell for Quagga routing software suite. \n\n" \
-	    "-c, --command            Execute argument as command\n" \
-	    "-E, --echo               Echo prompt and command in -c mode\n" \
-	    "-h, --help               Display this help and exit\n\n" \
-	    "Note that multiple commands may be executed from the command\n" \
-	    "line by passing multiple -c args, or by embedding linefeed\n" \
-	    "characters in one or more of the commands.\n\n" \
-	    "\n", progname);
+    {    
+      printf ("Usage : %s [OPTION...]\n\
+-A, --vty_addr     Set vty's bind address\n\
+-P, --vty_port     Set vty's port number\n\
+-v, --version      Print program version\n\
+-h, --help         Display this help and exit\n\
+\n\
+Report bugs to %s\n", progname, ZEBRA_BUG_ADDRESS);
+    }
+
   exit (status);
 }
 
 /* VTY shell options, we use GNU getopt library. */
-struct option longopts[] = 
+static struct option longopts[] = 
 {
-  /* For compatibility with older zebra/quagga versions */
-  { "command",              required_argument,       NULL, 'c'},
-  { "echo",                 no_argument,             NULL, 'E'},
-  { "help",                 no_argument,             NULL, 'h'},
+  // { "daemon",      no_argument,       NULL, 'd'},
+  // { "config_file", required_argument, NULL, 'f'},
+  // { "pid_file",    required_argument, NULL, 'i'},
+  // { "socket",      required_argument, NULL, 'z'},
+  { "help",        no_argument,       NULL, 'h'},
+  // { "dryrun",      no_argument,       NULL, 'C'},
+  { "vty_addr",    required_argument, NULL, 'A'},
+  { "vty_port",    required_argument, NULL, 'P'},
+  // { "retain",      no_argument,       NULL, 'r'},
+  // { "user",        required_argument, NULL, 'u'},
+  // { "group",       required_argument, NULL, 'g'},
+  { "version",     no_argument,       NULL, 'v'},
   { 0 }
 };
+
 
 /* Read a string, and return a pointer to it.  Returns NULL on EOF. */
 static char *
@@ -200,6 +218,8 @@ vtysh_rl_gets ()
 // }
 
 /* VTY shell main routine. */
+
+#if 0
 int
 main (int argc, char **argv, char **env)
 {
@@ -385,3 +405,103 @@ main (int argc, char **argv, char **env)
   /* Rest in peace. */
   exit (0);
 }
+#endif
+
+
+void signal_handler(int signal) {
+    printf("Received signal %d. Exiting...\n", signal);
+    fflush(stdout); // 刷新输出缓冲区
+    exit(EXIT_SUCCESS);
+}
+
+int
+main (int argc, char **argv)
+{
+  char *p;
+  int daemon_mode = 0;
+  char *progname;
+
+  /* Set umask before anything for security */
+  umask (0027);
+
+  /* Get program name. */
+  progname = ((p = strrchr (argv[0], '/')) ? ++p : argv[0]);
+
+ 
+  /* Command line option parse. */
+  while (1) 
+    {
+      int opt;
+
+      opt = getopt_long (argc, argv, "hA:P:v", longopts, 0);
+    
+      if (opt == EOF)
+	break;
+
+      switch (opt) 
+	{
+	case 0:
+	  break;
+	case 'A':
+	  vty_addr = optarg;
+	  break;
+	case 'P':
+          /* Deal with atoi() returning 0 on failure, and ripd not
+             listening on rip port... */
+          if (strcmp(optarg, "0") == 0) 
+            {
+              vty_port = 0;
+              break;
+            } 
+          vty_port = atoi (optarg);
+          if (vty_port <= 0 || vty_port > 0xffff)
+            vty_port = VTYSH_VTY_PORT;
+	  break;
+	case 'v':
+	  print_version (progname);
+	  exit (0);
+	  break;
+	case 'h':
+	  usage (progname, 0);
+	  break;
+	default:
+	  usage (progname, 1);
+	  break;
+	}
+    }
+
+  /* Prepare master thread. */
+  master = thread_master_create ();
+
+
+  // 注册信号处理函数
+  signal(SIGINT, signal_handler); // Ctrl+C
+  signal(SIGTERM, signal_handler); // 终止信号
+  signal(SIGPIPE, signal_handler); // 终止信号
+
+  cmd_init (1);
+  vty_init (master);
+
+  
+  /* Change to the daemon program. */
+  if (daemon_mode && daemon (0, 0) < 0)
+    {
+      zlog_err("MINI_VTYSH daemon failed: %s", strerror(errno));
+      exit (1);
+    }
+
+  /* Pid file create. */
+  pid_output (pid_file);
+
+  /* Create VTY's socket */
+  vty_serv_sock (vty_addr, vty_port, RIP_VTYSH_PATH);
+
+  /* Print banner. */
+  zlog_notice ("MINI_VTYSH %s starting: vty@%d", QUAGGA_VERSION, vty_port);
+
+  /* Execute each thread. */
+  thread_main (master);
+  /* Not reached. */
+  return (0);
+}
+

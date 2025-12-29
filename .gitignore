@@ -43,3 +43,4 @@ cscope.*
 *.pb.h
 *.pb-c.h
 *.pb-c.c
+config.lt

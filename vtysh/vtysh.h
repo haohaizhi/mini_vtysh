@@ -38,7 +38,9 @@
 
 /* vtysh local configuration file. */
 #define VTYSH_DEFAULT_CONFIG "vtysh.conf"
+#define DEFAULT_VTY_ADDR "0.0.0.0"
 
+#define VTYSH_VTY_PORT                  23
 void vtysh_init_vty (void);
 void vtysh_init_cmd (void);
 extern int vtysh_connect_all (const char *optional_daemon_name);

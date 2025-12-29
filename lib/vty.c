@@ -1765,13 +1765,15 @@ vty_create (int vty_sock, union sockunion *su)
     {
       /* Vty is not available if password isn't set. */
       if (host.password == NULL && host.password_encrypt == NULL)
-	{
-	  vty_out (vty, "Vty password is not set.%s", VTY_NEWLINE);
-	  vty->status = VTY_CLOSE;
-	  vty_close (vty);
-	  return NULL;
-	}
+        {
+          vty_out (vty, "Vty password is not set.%s", VTY_NEWLINE);
+          //vty->status = VTY_CLOSE;
+          //vty_close (vty);
+          //return NULL;
+        }
     }
+  
+  vty->node = ENABLE_NODE;
 
   /* Say hello to the world. */
   vty_hello (vty);
