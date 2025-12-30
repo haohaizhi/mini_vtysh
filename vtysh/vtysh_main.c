@@ -219,7 +219,6 @@ vtysh_rl_gets ()
 
 /* VTY shell main routine. */
 
-#if 0
 int
 main (int argc, char **argv, char **env)
 {
@@ -405,9 +404,8 @@ main (int argc, char **argv, char **env)
   /* Rest in peace. */
   exit (0);
 }
-#endif
 
-
+#if 0
 void signal_handler(int signal) {
     printf("Received signal %d. Exiting...\n", signal);
     fflush(stdout); // 刷新输出缓冲区
@@ -504,4 +502,4 @@ main (int argc, char **argv)
   /* Not reached. */
   return (0);
 }
-
+#endif

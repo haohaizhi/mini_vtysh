@@ -1877,6 +1877,22 @@ DEFUN (vtysh_write_terminal,
     }
 
   vty_out (vty, "end%s", VTY_NEWLINE);
+  if(NULL != strstr(self->string, "write"))
+  {
+     /* 打开文件进行写入 */
+    fp = fopen(config_default, "w");
+    if (fp == NULL) {
+        vty_out(vty, "%% Can't open configuration file %s: %s%s",
+                config_default, strerror(errno), VTY_NEWLINE);
+        return CMD_WARNING;
+    }
+	vtysh_config_write();
+    vtysh_config_dump (fp);
+    fprintf(fp, "end%s", VTY_NEWLINE);
+
+    /* 关闭文件 */
+    fclose(fp);
+  }
   
   return CMD_SUCCESS;
 }
@@ -2626,14 +2642,14 @@ vtysh_init_vty (void)
   // install_element (RIPNG_NODE, &no_distribute_list_prefix_cmd);
 
   /* "write terminal" command. */
-  // install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
+  install_element (ENABLE_NODE, &vtysh_write_terminal_cmd);
   // install_element (ENABLE_NODE, &vtysh_write_terminal_daemon_cmd);
 
   // install_element (CONFIG_NODE, &vtysh_integrated_config_cmd);
   // install_element (CONFIG_NODE, &no_vtysh_integrated_config_cmd);
 
   /* "write memory" command. */
-  install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
+  //install_element (ENABLE_NODE, &vtysh_write_memory_cmd);
 
   // install_element (VIEW_NODE, &vtysh_terminal_length_cmd);
   // install_element (ENABLE_NODE, &vtysh_terminal_length_cmd);
