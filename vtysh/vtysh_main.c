@@ -268,10 +268,10 @@ main (int argc, char **argv, char **env)
 	  echo_command = 1;
 	  break;
 	case 'h':
-	  usage (0);
+	  usage (progname, 0);
 	  break;
 	default:
-	  usage (1);
+	  usage (progname, 1);
 	  break;
 	}
     }
